@@ -17,15 +17,18 @@
 
 Workshop on Quantitative Analysis of Neural Activity, Fri Nov 24 - University of Victoria, Canada Dr. Kyle Mathewson - Department of Psychology - University of Alberta
 
-
+```
 clear all
 close all
 clc
 
 addpath('WorkshopFunctions')
-Discrete vs. Continuous
+```
+
+# Discrete vs. Continuous
 EEG is recorded as a discrete time series, an array of numbers over time The sampling rate with which the data is digitized directly influences the range of frequencies that can be represented in the signal. Nyquist frequency is half the sampling rate, so sampling say 1000 Hz, we can represent frequencies up to 500 Hz in our data, anything larger will show up as an artifact due to aliasing (so we use hardware filters to avoid this)
 
+```
 % So lets make up some fake data:
 % consider a random set of numbers as our data
 
@@ -43,10 +46,12 @@ figure; plot(times,data);
 % direction, useful to equate the sampling rate of signals from two
 % modalities (heart rate and EEG), and in resampling data that has
 % irregular sampling periods
+```
 
-filtering the data (bandpass, low-pass, high-pass)
-next we want to use an offline filter to attenuate certain ranges of frequencies in the signal. There are many options for filters with different tradeoffs This can be done with a butterworth filter, employed by the following function. One can use this to filter low frequencies (high pass), high frequencies (low pass), or to keep only a band of frequencies (band pass)
+# Filtering the data (bandpass, low-pass, high-pass)
+Next we want to use an offline filter to attenuate certain ranges of frequencies in the signal. There are many options for filters with different tradeoffs This can be done with a butterworth filter, employed by the following function. One can use this to filter low frequencies (high pass), high frequencies (low pass), or to keep only a band of frequencies (band pass)
 
+```
 %here we will use a bandpass filter to filter our everything but alpha
 %oscillations.
 
@@ -83,11 +88,13 @@ subplot(2,1,2); plot(times,filt_data);
 
 % Try zooming in on the filtered data so you can see a few seconds of the
 % remaining alpha oscillations
-Filtering data between 6 Hz and 14 Hz. 
 
-epoched data
-if we have some repetition of a stimulus, we may want to visualize what the brain activity evoked by this stimulus looks like. We can cut out chunks of data (epochs) aligned to these stimuli, with data before and after the stimulus onset The noise on individual presentations limits our ability to see this. So we can average over many instances of a stimulus to minimize noise. The noise in the individual trials will be attenuated as a function of the square root of the number of trials, so there are deminishing returns to more trials We can also subtract out baseline shifts in voltage to align trials.
+```
 
+# Epoched data
+If we have some repetition of a stimulus, we may want to visualize what the brain activity evoked by this stimulus looks like. We can cut out chunks of data (epochs) aligned to these stimuli, with data before and after the stimulus onset The noise on individual presentations limits our ability to see this. So we can average over many instances of a stimulus to minimize noise. The noise in the individual trials will be attenuated as a function of the square root of the number of trials, so there are deminishing returns to more trials We can also subtract out baseline shifts in voltage to align trials.
+
+```
 n_epochs = 100; % create fake stimuli and epochs of dat
 
 prestim = 2000; %time before stimulus
@@ -127,9 +134,12 @@ subplot(2,1,2); plot(epoch_times,mean(epochs,1));
     ylabel('Voltage (uV)');
     title('Average of Epochs');
 
-Hilbert Transform-
+```
+
+# Hilbert Transform
 The first of four methods to represent the data time series in the frequency domain is called a Hilbert transform. First we use a narrow bandpass in the frequency band of interest (as shown above). Then computes the instantaneous phase and power
 
+```
 complex_data = hilbert(epochs(1,:)); %hilbert transform
 power_hilb = abs(complex_data).^2; %get the real part as the power
 phase_hilb = angle(complex_data); %and the imaginary as the phase
@@ -159,9 +169,12 @@ subplot(4,1,4); plot(epoch_times,rad2deg(phase_hilb));
     ylabel('Phase (Degrees)');
     title('Instantaneous Phase');
 
-fast-fourer transform -
+```
+
+# Fast-fourer transform -
 Our time series can be converted to the frequency domain as a sum of weighted sine waves First we can compute a fast fourier transform on a chunk of data as a whole to create a signle frequency spectra for that data chunk (no matter the length) data must be of length 2^n frequency resolution depends on number of time points used data can be padded with zeros to increase frequency resolution and get to 2^n
 
+```
 Ubound = 30; %upper bound on fft
 
 %for each epoch run this fft function
@@ -205,10 +218,10 @@ subplot(2,1,2); plot(freqs_fft,mean(power_fft,1));
     ylabel('Frequency (Hz)');
     title('Average Epoch Power Spectra');
     axis tight;
+```
 
-%
  
-moving window FFT,
+# Moving window FFT
 Now we might want to have resolution in time for how the frequency changes we can move a window accross the data and compute the fft for the data on each window EEGLAB-pop_newtimef does this not covered here, but we can window the data to reduce edge artifacts. a major point here is the combination of uncertainty in time vs frequency. We can use longer windows to increase our frequency, but we loose resolution in time by doing so. We can't have both.
 
 ```
@@ -239,7 +252,7 @@ for i_epoch = 1:2 %do for each epoch (just two for now for time)
 end
 %get out new time stamps due to windows
 times_winfft = epoch_times(1+window_length/2:step_size:length(epochs(i_epoch,:))-window_length/2);
-``` 
+
 
 %plot the original data and a single epoch spectrogram (the power in all
 %frequencies at each time point, a bunch of spectra stacked over time)
@@ -257,10 +270,12 @@ subplot(2,1,2); imagesc(times_winfft,freqs_winfft,squeeze(power_winfft(1,:,:))')
     axis tight;
     c=colorbar;
     ylabel(c,'Log Power (dB)')
+``` 
 
-wavelet analysis
-the final method of computing power and phase information is a wavelet analysis. In the fft analysis, given a single window size, there are much more cycles of higher frequencies used than in lower frequences. This gives poor time resolution in higher frequencies. To overcome this, a wavelet analysis modifies the number of cycles in the wavelet as a function of frequency. So instead of specifiying the window size, we specify the number of cycles (wavenumber). 3 cycles at 10 Hz is 300 ms long, 3 cycles at 100 Hz is 30 ms long, etc. This provides more equivalent time resolution over different frequencies.
+# Wavelet analysis
+The final method of computing power and phase information is a wavelet analysis. In the fft analysis, given a single window size, there are much more cycles of higher frequencies used than in lower frequences. This gives poor time resolution in higher frequencies. To overcome this, a wavelet analysis modifies the number of cycles in the wavelet as a function of frequency. So instead of specifiying the window size, we specify the number of cycles (wavenumber). 3 cycles at 10 Hz is 300 ms long, 3 cycles at 100 Hz is 30 ms long, etc. This provides more equivalent time resolution over different frequencies.
 
+```
 % the math is similar, we are creating little wavelets, and convolving them
 % with the EEG data to see how well the two match up.
 % 	-pop_newtimef() in EEGLAB can also do this (default setting), in EEGLAB
@@ -331,14 +346,17 @@ subplot(3,1,3); imagesc(epoch_times,freqs_wavelet,squeeze(power_wavelet(1,:,:)))
     c=colorbar;
     ylabel(c,'Log Power (dB)')
 
-Wavelet Tester Examples
-% Now that we have covered wavelet and fft analysis, we can compare the two
-% directly and check what happens as we change the settings. To do this we
-% will make new fake data with simulated oscillations at different
-% frequencies as see how well we can resolve those frequencies in our
-% analyses
+```
 
 
+# Wavelet Tester Examples
+ Now that we have covered wavelet and fft analysis, we can compare the two
+ directly and check what happens as we change the settings. To do this we
+ will make new fake data with simulated oscillations at different
+ frequencies as see how well we can resolve those frequencies in our
+ analyses
+
+```
 %random normal data
 noise_level = 10;
 data = randn(1,1000)*noise_level;
@@ -444,11 +462,13 @@ xlabel('Frequency [Hz]');
 view(90,90)
 set(gca,'XDir','reverse');
 axis tight;
-Elapsed time is 0.009669 seconds.
 
-Power
+```
+
+# Power
 Now that we have a few ways of computing the power and phase of our EEG signals, we may want to test questions we have about the difference in power or phase at certain frequencies between certain times or conditions. For example, alpha power and alpha phase have both been shown to differ in the period before stimuli that are and are not detected (Mathewson et al., 2009, JNeurosci).
 
+```
 % This power and phase data can be found in EEGLAB as well in the ERSP
 % varialble, or as data from individual trials
 
@@ -477,8 +497,9 @@ end
 % now we could do this for two different conditoins or two different groups
 % of participants, or two different time points, or channels, etc. Standard
 % statistical tests can be used.
+```
 
-Phase
+# Phase
 Finally we may have certain hypothesis about how the phase of certin
 oscillations changes in different situations. We can pull the estimated
 phase at a single moment in time out of the data in the frequency domain
@@ -492,6 +513,8 @@ circ_stat toolbox for doing stats on circular variables
 	circular difference, circular clustering
  Most of these stats are based on the angular mean and angular standard
  deviation, as are more advanced EEG stats mentioned below (coherence)
+ 
+ ```
 % Here we will try a rose plot, angle plot...
 % pick a certain frequency and time and consider the phase over epochs
 % say 10 Hz phase and stimulus onset
@@ -527,32 +550,35 @@ subplot(3,1,2); compass(sin(epoch_phase),cos(epoch_phase));
 subplot(3,1,3); compass(epoch_power.*sin(epoch_phase),epoch_power.*cos(epoch_phase));
  title('Compass plot of alpha power and phase at stim onset');
 
-Coherence
+```
+
+# Coherence
+
 INTERTRIAL COHERENCE - can be measured from the phase of a certain frequency on each trial. If the phase is very consistent over trials, then a large coherence measure will be obtained. This can be good for measuring phase resetting, and also entrainment to stimuli over trials.
 
-% MODULATION INDEX - Still within a single channel one may want to measure to extent to
-% which the phase of a slow frequency modulates the power of a higher
-% frequency, the so called modulation index. This can be represented as a
-% histogram in which different bins of slow frequency phase have
-% different power of a high frequency, and tested with Chi squared
-% distributions or permutations stats.
+MODULATION INDEX - Still within a single channel one may want to measure to extent to
+which the phase of a slow frequency modulates the power of a higher
+frequency, the so called modulation index. This can be represented as a
+histogram in which different bins of slow frequency phase have
+different power of a high frequency, and tested with Chi squared
+distributions or permutations stats.
 
-% Finally we may want to understand communication between recording sites
-% we can look at this in terms of the modulation index above, but also in a
-% few other ways.
+Finally we may want to understand communication between recording sites
+we can look at this in terms of the modulation index above, but also in a
+few other ways.
 
-% POWER COHERENCE - We can compute the correlation of the power envelope of certain
-% frequencies (power_coher.m).
+POWER COHERENCE - We can compute the correlation of the power envelope of certain
+frequencies (power_coher.m).
 
-% PHASE COHERENCE - We can also study how reliably the phase differs between two sites since
-% consistent lagged phase betwen two sites may indicate communication. FOr
-% this we can meausre the phase at each time point for each site, find the
-% difference between sites at each time point, and compute the variance of
-% those differences over time. A high amount of communication should be
-% seens as a consistent difference in phase over time. (phase_coher.m)
+PHASE COHERENCE - We can also study how reliably the phase differs between two sites since
+consistent lagged phase betwen two sites may indicate communication. FOr
+this we can meausre the phase at each time point for each site, find the
+difference between sites at each time point, and compute the variance of
+those differences over time. A high amount of communication should be
+seens as a consistent difference in phase over time. (phase_coher.m)
 
-% MODULATION INDEX
-%
-% OTHER - We can also use other measures like lagged cross correlation between
-% channels or granger causality analysis accross channels to estimate the
-% direction of influence and the lag in communication.
+MODULATION INDEX
+
+OTHER - We can also use other measures like lagged cross correlation between
+channels or granger causality analysis accross channels to estimate the
+direction of influence and the lag in communication.
