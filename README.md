@@ -1,20 +1,22 @@
 # TimeFreqWorkshop
 
-Contents
-Analyses of EEG signals
-Discrete vs. Continuous
-filtering the data (bandpass, low-pass, high-pass)
-epoched data
-Hilbert Transform-
-fast-fourer transform -
-moving window FFT,
-wavelet analysis
-Wavelet Tester Examples
-Power
-Phase
-Coherence
-Analyses of EEG signals
+# Contents
+* Analyses of EEG signals
+* Discrete vs. Continuous
+* filtering the data (bandpass, low-pass, high-pass)
+* epoched data
+* Hilbert Transform-
+* fast-fourer transform -
+* moving window FFT,
+* wavelet analysis
+* Wavelet Tester Examples
+* Power
+* Phase
+* Coherence
+* Analyses of EEG signals
+
 Workshop on Quantitative Analysis of Neural Activity, Fri Nov 24 - University of Victoria, Canada Dr. Kyle Mathewson - Department of Psychology - University of Alberta
+
 
 clear all
 close all
