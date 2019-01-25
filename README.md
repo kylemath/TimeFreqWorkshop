@@ -211,7 +211,7 @@ subplot(2,1,2); plot(freqs_fft,mean(power_fft,1));
 moving window FFT,
 Now we might want to have resolution in time for how the frequency changes we can move a window accross the data and compute the fft for the data on each window EEGLAB-pop_newtimef does this not covered here, but we can window the data to reduce edge artifacts. a major point here is the combination of uncertainty in time vs frequency. We can use longer windows to increase our frequency, but we loose resolution in time by doing so. We can't have both.
 
-``
+```
 Ubound = 30; %upper bound of fft
 window_length = 2^8; %length of moving window in sampling points
 fft_length = 2^10; %the rest is padded with zeros (also sampling points) - keep same as above for no padding
@@ -239,7 +239,7 @@ for i_epoch = 1:2 %do for each epoch (just two for now for time)
 end
 %get out new time stamps due to windows
 times_winfft = epoch_times(1+window_length/2:step_size:length(epochs(i_epoch,:))-window_length/2);
-``
+``` 
 
 %plot the original data and a single epoch spectrogram (the power in all
 %frequencies at each time point, a bunch of spectra stacked over time)
