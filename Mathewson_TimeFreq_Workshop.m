@@ -30,6 +30,14 @@ figure; plot(times,data);
     ylabel('Voltage (uV)');
     title('Raw Data');
 
+%zoom in to a second of data
+trange = [40 41]
+trange = trange/speriod;
+figure; plot(times(trange(1):trange(2)),data(trange(1):trange(2)));
+    xlabel('Time (sec)');
+    ylabel('Voltage (uV)');
+    title('Raw Data');
+
 % use interp() or resample() to change sampling rate of data in either
 % direction, useful to equate the sampling rate of signals from two
 % modalities (heart rate and EEG), and in resampling data that has
@@ -67,7 +75,7 @@ type = 'band'; %type of filter
 %
 % Output is:
 %            Y_filt - same as Y but not filtered
-
+figure;
 subplot(2,1,1); plot(times,data);
     xlabel('Time (sec)');
     ylabel('Voltage (uV)');
@@ -76,11 +84,24 @@ subplot(2,1,2); plot(times,filt_data);
     xlabel('Time (sec)');
     ylabel('Voltage (uV)');
     title('Filtered Data');
+
     
 % Try zooming in on the filtered data so you can see a few seconds of the
 % remaining alpha oscillations
+% and again for the zoomed in
 
-%% epoched data
+figure;
+subplot(2,1,1); plot(times(trange(1):trange(2)),data(trange(1):trange(2)));
+    xlabel('Time (sec)');
+    ylabel('Voltage (uV)');
+    title('Raw Data');
+subplot(2,1,2); plot(times(trange(1):trange(2)),filt_data(trange(1):trange(2)));
+    xlabel('Time (sec)');
+    ylabel('Voltage (uV)');
+    title('Filtered Data');
+
+
+%% Epoched data
 % if we have some repetition of a stimulus, we may want to visualize what
 % the brain activity evoked by this stimulus looks like. We can cut out chunks of data (epochs) 
 % aligned to these stimuli, with data before and after the stimulus onset
@@ -109,16 +130,18 @@ baselines = zeros(n_epochs,1);
 
 for i_epoch = 1:n_epochs
     epochs(i_epoch,:) = filt_data(stim_times(i_epoch)-prestim+1 : stim_times(i_epoch)+poststim);
+    
     %add in a fake ERP from 200:400 ms on each trial to represent the
     %evoked activity
     epochs(i_epoch,prestim+201:prestim+300) = epochs(i_epoch,prestim+201:prestim+300) + (hanning(100)*10)';
     epochs(i_epoch,prestim+301:prestim+400) = epochs(i_epoch,prestim+301:prestim+400) - (hanning(100)*20)';
+    
     %baseline subtraction
     baselines(i_epoch) = mean(epochs(i_epoch,prestim-baseline:prestim));
     epochs(i_epoch,:) = epochs(i_epoch,:) - baselines(i_epoch);
 end
 
-%plot the individual epochs and the average
+%plot some individual epochs and the average
 figure; 
 subplot(2,1,1); plot(epoch_times,epochs(1:3,:));
     xlabel('Time (sec)');
@@ -134,9 +157,9 @@ subplot(2,1,2); plot(epoch_times,mean(epochs,1));
 % The first of four methods to represent the data time series in the
 % frequency domain is called a Hilbert transform.
 % First we use a narrow bandpass in the frequency band of interest (as
-% shown above). Then computes the instantaneous phase and power
-
-complex_data = hilbert(epochs(1,:)); %hilbert transform
+% shown above). Then compute the instantaneous phase and power
+epoch_sample = 2;
+complex_data = hilbert(epochs(epoch_sample,:)); %hilbert transform
 power_hilb = abs(complex_data).^2; %get the real part as the power
 phase_hilb = angle(complex_data); %and the imaginary as the phase
 
@@ -148,7 +171,7 @@ phase_hilb = angle(complex_data); %and the imaginary as the phase
 %accross a wider range of frequencies
 
 figure;
-subplot(4,1,1);  plot(epoch_times,epochs(1,:));
+subplot(4,1,1);  plot(epoch_times,epochs(epoch_sample,:));
     xlabel('Time (sec)');
     ylabel('Voltage (uV)');
     title('Individual band-pass filtered Epoch');
@@ -170,22 +193,16 @@ subplot(4,1,4); plot(epoch_times,rad2deg(phase_hilb));
 % Our time series can be converted to the frequency domain as a sum of
 % weighted sine waves
 % First we can compute a fast fourier transform on a chunk of data as a
-% whole to create a signle frequency spectra for that data chunk (no
+% whole to create a single frequency spectra for that data chunk (no
 % matter the length)
 % data must be of length 2^n
 % frequency resolution depends on number of time points used
-% data can be padded with zeros to increase frequency resolution and get to
-% 2^n
+% data can be padded with zeros to increase frequency resolution 
+% and get to 2^n
+% we also multiply by a hamming window to remove sharp edges and edge artifacts
 
 Ubound = 30; %upper bound on fft 
-
-%for each epoch run this fft function
-win_hamming = hamming(length(epochs(1,:)));
-for i_epoch = 1:n_epochs
-    temp_data = epochs(i_epoch,:);
-    temp_data = win_hamming.*temp_data';
-    [power_fft(i_epoch,:), phase_fft(i_epoch,:), freqs_fft] = kyle_fft(temp_data',srate,Ubound);
-end
+win_hamming = hamming(length(epochs(1,:))); %hamming window to smooth epoch edges
 
 
 %here we plot the data, a hamming window used to taper the edges and avoid
@@ -202,9 +219,16 @@ subplot(3,1,3);
 
 
 
+%for each epoch run this fft function
+for i_epoch = 1:n_epochs
+    temp_data = epochs(i_epoch,:);
+    temp_data = win_hamming.*temp_data';
+    [power_fft(i_epoch,:), phase_fft(i_epoch,:), freqs_fft] = kyle_fft(temp_data',srate,Ubound);
+end
 
 % kyle_fft.m - Compute a FFT and get back the results
 % [power, phase, freqs] = kyle_fft(data,srate,Ubound)
+
 % now we plot the power spectra of each epoch, and the mean over epochs
 % we can see a peak in the alpha band since we have already band-pass
 % filtered the signal
@@ -221,13 +245,13 @@ subplot(2,1,2); plot(freqs_fft,mean(power_fft,1));
     title('Average Epoch Power Spectra');
     axis tight;
 
-% 
+
 %% moving window FFT, 
 % Now we might want to have resolution in time for how the frequency changes
 % we can move a window accross the data and compute the fft for the data on each window
-% EEGLAB-pop_newtimef does this
-% not covered here, but we can window the data to reduce edge artifacts. 
-% a major point here is the combination of uncertainty in time vs
+% EEGLAB-pop_newtimef does this but is not covered here
+
+% A major point here is the combination of uncertainty in time vs
 % frequency. We can use longer windows to increase our frequency, but we
 % loose resolution in time by doing so. We can't have both. 
 
@@ -262,12 +286,13 @@ times_winfft = epoch_times(1+window_length/2:step_size:length(epochs(i_epoch,:))
 %plot the original data and a single epoch spectrogram (the power in all
 %frequencies at each time point, a bunch of spectra stacked over time)
 
+plot_epoch = 2;
 figure;
-subplot(2,1,1);  plot(epoch_times,epochs(2,:));
+subplot(2,1,1);  plot(epoch_times,epochs(plot_epoch,:));
     xlabel('Time (sec)');
     ylabel('Voltage (uV)');
     title('Individual band-pass filtered Epoch');
-subplot(2,1,2); imagesc(times_winfft,freqs_winfft,squeeze(power_winfft(2,:,:))');
+subplot(2,1,2); imagesc(times_winfft,freqs_winfft,squeeze(power_winfft(plot_epoch,:,:))');
     set(gca,'YDir','normal');
    xlabel('Time(s)');
     ylabel('Frequency (Hz)');
@@ -315,7 +340,9 @@ end
 times_wavelet = epoch_times; % keep original time stamps
 
 % [B,T,P]=BOSC_tf(eegsignal,F,Fsample,wavenumber);
-%
+
+% Modified version of code by Jeremy Caplan - University of Alberta
+
 % This function computes a continuous wavelet (Morlet) transform on
 % a segment of EEG signal; this can be used to estimate the
 % background spectrum (BOSC_bgfit) or to apply the BOSC method to
@@ -368,7 +395,7 @@ subplot(3,1,3); imagesc(epoch_times,freqs_wavelet,squeeze(power_wavelet(1,:,:)))
 % 	detected (Mathewson et al., 2009, JNeurosci). 
 
 % This power and phase data can be found in EEGLAB as well in the ERSP
-% varialble, or as data from individual trials
+% variable, or as data from individual trials
 
 % 	Here we will practice computing the average power on each epoch in a window, 
 % in some frequency band for example in the alpha band in the  1 second before stim onset
@@ -394,11 +421,11 @@ end
   
 % now we could do this for two different conditoins or two different groups
 % of participants, or two different time points, or channels, etc. Standard
-% statistical tests can be used.
+% statistical tests for positively scewed distributions can be used.
 
 
 %% Phase
-%  Finally we may have certain hypothesis about how the phase of certin
+%  Finally we may have certain hypothesis about how the phase of certain
 %  oscillations changes in different situations. We can pull the estimated
 %  phase at a single moment in time out of the data in the frequency domain
 %  above as well. 
@@ -469,13 +496,14 @@ subplot(3,1,3); compass(epoch_power.*sin(epoch_phase),epoch_power.*cos(epoch_pha
 % frequencies (power_coher.m).
 
 % PHASE COHERENCE - We can also study how reliably the phase differs between two sites since
-% consistent lagged phase betwen two sites may indicate communication. FOr
-% this we can meausre the phase at each time point for each site, find the
+% consistent lagged phase between two sites may indicate communication. For
+% this we can measure the phase at each time point for each site, find the
 % difference between sites at each time point, and compute the variance of
 % those differences over time. A high amount of communication should be
 % seens as a consistent difference in phase over time. (phase_coher.m)
 
-% MODULATION INDEX 
+% MODULATION INDEX - can also be used with one channel as the slower carrier frequency
+% and another as the faster nested frequency modulated by the slower.
 % 
 % OTHER - We can also use other measures like lagged cross correlation between
 % channels or granger causality analysis accross channels to estimate the
